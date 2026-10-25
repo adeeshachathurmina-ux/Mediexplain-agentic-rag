@@ -1,0 +1,62 @@
+[
+  {
+    "chunk_id": "chunk_01",
+    "text": "HbA1c (Glycated Haemoglobin) reflects average plasma glucose over the previous 8 to 12 weeks. Normal HbA1c is below 5.7%. Prediabetes is defined as HbA1c between 5.7% and 6.4%. An HbA1c level of 6.5% or higher indicates diabetes mellitus. An HbA1c above 8.0% indicates poorly controlled diabetes requiring medication review and strict dietary management.",
+    "source": "WHO_Diabetes_Guideline.pdf",
+    "page": 4
+  },
+  {
+    "chunk_id": "chunk_02",
+    "text": "Fasting Blood Sugar (FBS) measures blood glucose after an overnight fast of at least 8 hours. A normal FBS is between 70 and 99 mg/dL. Fasting glucose between 100 and 125 mg/dL indicates impaired fasting glucose (prediabetes), while an FBS of 126 mg/dL or higher on two separate tests confirms diabetes.",
+    "source": "WHO_Diabetes_Guideline.pdf",
+    "page": 5
+  },
+  {
+    "chunk_id": "chunk_03",
+    "text": "Post-Prandial Blood Sugar (PPBS) is measured 2 hours after starting a meal. In healthy individuals, PPBS should be less than 140 mg/dL. Values between 140 and 199 mg/dL indicate impaired glucose tolerance, and values of 200 mg/dL or above indicate diabetes mellitus.",
+    "source": "WHO_Diabetes_Guideline.pdf",
+    "page": 6
+  },
+  {
+    "chunk_id": "chunk_04",
+    "text": "Low-Density Lipoprotein (LDL) cholesterol is known as bad cholesterol because elevated levels lead to plaque buildup in arteries (atherosclerosis). Optimal LDL is less than 100 mg/dL. LDL between 130 and 159 mg/dL is borderline high, 160 to 189 mg/dL is high, and 190 mg/dL or above is very high. For diabetic patients, LDL should ideally be kept below 70 to 100 mg/dL.",
+    "source": "Clinical_Lipid_Profile_Guideline.pdf",
+    "page": 2
+  },
+  {
+    "chunk_id": "chunk_05",
+    "text": "High-Density Lipoprotein (HDL) is protective cholesterol that removes excess cholesterol from the bloodstream. Low HDL (less than 40 mg/dL in men or less than 50 mg/dL in women) increases cardiovascular risk. HDL of 60 mg/dL or higher is considered protective against heart disease.",
+    "source": "Clinical_Lipid_Profile_Guideline.pdf",
+    "page": 3
+  },
+  {
+    "chunk_id": "chunk_06",
+    "text": "Triglycerides are a type of blood fat elevated by excess sugar, refined carbohydrates, and alcohol. Normal triglycerides are below 150 mg/dL. Levels between 150 and 199 mg/dL are borderline high, 200 to 499 mg/dL are high, and 500 mg/dL or above carry a risk of acute pancreatitis.",
+    "source": "Clinical_Lipid_Profile_Guideline.pdf",
+    "page": 4
+  },
+  {
+    "chunk_id": "chunk_07",
+    "text": "Serum Creatinine and eGFR assess kidney filtration function. Normal adult serum creatinine ranges from 0.7 to 1.3 mg/dL in men and 0.6 to 1.1 mg/dL in women. Elevated serum creatinine (such as 1.6 mg/dL or higher) alongside reduced eGFR (below 60 mL/min/1.73m2) indicates impaired kidney function or diabetic nephropathy in diabetic patients.",
+    "source": "Renal_And_Liver_Function_Guideline.pdf",
+    "page": 7
+  },
+  {
+    "chunk_id": "chunk_08",
+    "text": "Patients with both uncontrolled diabetes (HbA1c > 7.5%) and elevated serum creatinine (> 1.4 mg/dL) must avoid nephrotoxic painkillers such as NSAIDs (Ibuprofen, Diclofenac), control blood pressure strictly, reduce salt intake, and consult a physician for renal-safe antidiabetic therapy.",
+    "source": "Renal_And_Liver_Function_Guideline.pdf",
+    "page": 9
+  },
+  {
+    "chunk_id": "chunk_09",
+    "text": "Alanine Aminotransferase (ALT / SGPT) and Aspartate Aminotransferase (AST / SGOT) are enzymes that indicate liver cell injury. The normal range for ALT is 7 to 56 U/L and for AST is 8 to 33 U/L. Mildly elevated ALT/AST (60 to 150 U/L) is commonly caused by non-alcoholic fatty liver disease (NAFLD), medications such as statins, or alcohol use.",
+    "source": "Renal_And_Liver_Function_Guideline.pdf",
+    "page": 11
+  },
+  {
+    "chunk_id": "chunk_10",
+    "text": "Combined Diabetic Dyslipidemia occurs when a patient has high HbA1c/FBS together with high LDL cholesterol or high Triglycerides. Management requires Mediterranean-style low-glycemic diet, regular aerobic exercise (150 minutes/week), avoidance of trans fats and sugary beverages, and statin therapy as prescribed by a physician.",
+    "source": "Clinical_Lipid_Profile_Guideline.pdf",
+    "page": 6
+  }
+]

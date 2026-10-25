@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables (secrets)
+.env
+
+# Vector DB local runtime cache (optional)
+*.log
+.DS_Store
