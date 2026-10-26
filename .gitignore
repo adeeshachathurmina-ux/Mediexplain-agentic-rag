@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
 
 # Virtual environments
 venv/
@@ -11,6 +12,12 @@ env/
 # Environment variables (secrets)
 .env
 
-# Vector DB local runtime cache (optional)
+# IDE settings
+.vscode/
+.idea/
+
+# Local runtime cache
+data/chroma_db/
 *.log
 .DS_Store
+Thumbs.db

@@ -1,0 +1,30 @@
+name: Python CI - Syntax & Architecture Check
+
+on:
+  push:
+    branches: [ main, member1-ingestion, member2-math, member3-agent, member4-evaluation ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify Python Syntax Across All Packages
+        run: |
+          python -m compileall src/
+
+      - name: Verify Mandatory Deliverables Exist
+        run: |
+          test -f requirements.txt
+          test -f .env.example
+          test -f README.md
+          test -f src/interfaces/base_interfaces.py
