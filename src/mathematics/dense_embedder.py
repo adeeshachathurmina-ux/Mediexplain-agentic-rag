@@ -28,7 +28,13 @@ Mathematical Formulations:
 """
 
 import os
+import warnings
+
+# Suppress HuggingFace / Transformers hub warnings and progress bars for clean console output
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 from typing import List, Dict, Any, Optional, Union
 import numpy as np
@@ -68,6 +74,9 @@ class DenseEmbedder:
         """Lazily loads the SentenceTransformer model on demand."""
         if self._model is None:
             try:
+                import logging
+                logging.getLogger("transformers").setLevel(logging.ERROR)
+                logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
                 from sentence_transformers import SentenceTransformer
                 self._model = SentenceTransformer(self.model_name, device=self.device)
             except Exception as exc:
