@@ -1,14 +1,15 @@
 """
 MediExplain AI - Explainable Agentic Medical Lab Report & Clinical Guideline Interpreter
-DS205.3: Data Science with Python | Interactive Streamlit Web Application (Member 4 Deliverable)
+DS205.3: Data Science with Python | Interactive Streamlit Web Application (High-Distinction Dashboard)
 
 Features:
-1. Dynamic Patient Blood Report PDF Ingestion & OCR/Text extraction via pdfplumber.
+1. Dynamic Patient Blood Report PDF Ingestion & OCR/Text extraction via pdfplumber with Session State persistence.
 2. Bilingual Clinical Query Understanding & Explanations (සිංහල & English).
-3. Live Biomarker Extraction Dashboard (Glycemic, Lipid, Renal & Hepatic indicators).
-4. Explainable Multi-Step Agentic Loop (Observation -> Reasoning -> Action -> Synthesis).
-5. Foundational Vector Math Inspector (Dot Product, Vector Magnitude, Cosine Similarity).
-6. Real-Time RAG Triad Metric Gauges (Context Relevance, Groundedness, Answer Relevance).
+3. Interactive Biomarker Analytics with Plotly Visualization (Patient vs Clinical Thresholds).
+4. Explainable Multi-Step Agentic Loop (Observation -> Reasoning -> Action -> Persistence).
+5. Tab-Organized Dashboard (Clinical Advice, RAG Triad Radar, Agent Trace, Vector Math, Evidence Chunks).
+6. Downloadable Patient Clinical Summary Report (.txt / .md).
+7. Prominent Medical Ethics & Safety Guardrail Banner.
 """
 
 import os
@@ -18,6 +19,7 @@ from typing import List, Dict, Any, Optional
 
 import streamlit as st
 import pdfplumber
+import plotly.graph_objects as go
 
 # Ensure root directory is on Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -27,7 +29,7 @@ from run_evaluation import StandaloneAgenticRAGPipeline
 
 
 # -----------------------------------------------------------------------------
-# Streamlit Page Configuration & Styling
+# Streamlit Page Configuration & Modern Clinical Styling
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="MediExplain AI - Agentic Medical Interpreter",
@@ -48,7 +50,17 @@ st.markdown(
     .sub-title {
         font-size: 1.05rem;
         color: #4B5563;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.2rem;
+    }
+    .disclaimer-banner {
+        background-color: #FEF2F2;
+        border-left: 5px solid #EF4444;
+        padding: 12px 18px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        color: #7F1D1D;
+        font-size: 0.92rem;
+        line-height: 1.5;
     }
     .metric-card {
         background-color: #F8FAFC;
@@ -56,33 +68,46 @@ st.markdown(
         border-radius: 8px;
         padding: 12px;
         text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .metric-val {
-        font-size: 1.4rem;
+        font-size: 1.35rem;
         font-weight: 700;
         color: #0F172A;
     }
     .metric-lbl {
         font-size: 0.85rem;
         color: #64748B;
+        font-weight: 500;
     }
     .badge-normal {
-        color: #166534; background-color: #DCFCE7; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem;
+        color: #166534; background-color: #DCFCE7; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem;
     }
     .badge-high {
-        color: #991B1B; background-color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem;
+        color: #991B1B; background-color: #FEE2E2; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem;
     }
     .badge-low {
-        color: #854D0E; background-color: #FEF9C3; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.8rem;
+        color: #854D0E; background-color: #FEF9C3; padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 0.78rem;
     }
     .sinhala-box {
         background-color: #F0FDF4;
         border-left: 5px solid #22C55E;
-        padding: 16px;
-        border-radius: 6px;
-        font-size: 1.05rem;
-        line-height: 1.6;
+        padding: 18px;
+        border-radius: 8px;
+        font-size: 1.02rem;
+        line-height: 1.7;
         color: #14532D;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .english-box {
+        background-color: #F0F9FF;
+        border-left: 5px solid #0284C7;
+        padding: 18px;
+        border-radius: 8px;
+        font-size: 1.02rem;
+        line-height: 1.7;
+        color: #0C4A6E;
+        box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
     </style>
     """,
@@ -101,6 +126,21 @@ def load_system():
 
 
 pipeline, evaluator = load_system()
+
+
+# -----------------------------------------------------------------------------
+# Session State Initialization (Fixes Data Disappearing on Rerun)
+# -----------------------------------------------------------------------------
+if "report_content" not in st.session_state:
+    st.session_state.report_content = ""
+if "report_filename" not in st.session_state:
+    st.session_state.report_filename = "No Report Selected"
+if "parsed_biomarkers" not in st.session_state:
+    st.session_state.parsed_biomarkers = []
+if "last_query" not in st.session_state:
+    st.session_state.last_query = ""
+if "last_result" not in st.session_state:
+    st.session_state.last_result = None
 
 
 # -----------------------------------------------------------------------------
@@ -129,14 +169,14 @@ def extract_text_from_pdf(pdf_file) -> str:
 def parse_biomarkers(report_text: str) -> List[Dict[str, Any]]:
     """Identifies standard clinical blood test parameters from the extracted report text."""
     biomarkers = [
-        {"name": "HbA1c (Glycated Hb)", "unit": "%", "pattern": r"HbA1c[^\d]*(\d+(?:\.\d+)?)\s*%", "ref": "< 5.7%", "warn_hi": 6.5},
-        {"name": "Fasting Blood Sugar", "unit": "mg/dL", "pattern": r"(?:Fasting Blood Sugar|FBS)[^\d]*(\d+(?:\.\d+)?)", "ref": "70 - 99 mg/dL", "warn_hi": 126},
-        {"name": "LDL Cholesterol", "unit": "mg/dL", "pattern": r"LDL[^\d]*(\d+(?:\.\d+)?)", "ref": "< 100 mg/dL", "warn_hi": 160},
-        {"name": "HDL Cholesterol", "unit": "mg/dL", "pattern": r"HDL[^\d]*(\d+(?:\.\d+)?)", "ref": ">= 40 mg/dL", "warn_lo": 40},
-        {"name": "Serum Triglycerides", "unit": "mg/dL", "pattern": r"Triglycerides[^\d]*(\d+(?:\.\d+)?)", "ref": "< 150 mg/dL", "warn_hi": 200},
-        {"name": "Serum Creatinine", "unit": "mg/dL", "pattern": r"Creatinine[^\d]*(\d+(?:\.\d+)?)", "ref": "0.7 - 1.3 mg/dL", "warn_hi": 1.4},
-        {"name": "eGFR Filtration", "unit": "mL/min", "pattern": r"eGFR[^\d]*(\d+(?:\.\d+)?)", "ref": ">= 90 mL/min", "warn_lo": 60},
-        {"name": "ALT (SGPT) Liver", "unit": "U/L", "pattern": r"(?:ALT|SGPT)[^\d]*(\d+(?:\.\d+)?)", "ref": "7 - 56 U/L", "warn_hi": 56},
+        {"name": "HbA1c (Glycated Hb)", "short": "HbA1c", "unit": "%", "pattern": r"HbA1c[^\d]*(\d+(?:\.\d+)?)\s*%", "ref": "< 5.7%", "limit": 5.7, "warn_hi": 6.5},
+        {"name": "Fasting Blood Sugar", "short": "FBS", "unit": "mg/dL", "pattern": r"(?:Fasting Blood Sugar|FBS)[^\d]*(\d+(?:\.\d+)?)", "ref": "70 - 99 mg/dL", "limit": 99.0, "warn_hi": 126.0},
+        {"name": "LDL Cholesterol", "short": "LDL", "unit": "mg/dL", "pattern": r"LDL[^\d]*(\d+(?:\.\d+)?)", "ref": "< 100 mg/dL", "limit": 100.0, "warn_hi": 160.0},
+        {"name": "HDL Cholesterol", "short": "HDL", "unit": "mg/dL", "pattern": r"HDL[^\d]*(\d+(?:\.\d+)?)", "ref": ">= 40 mg/dL", "limit": 40.0, "warn_lo": 40.0},
+        {"name": "Serum Triglycerides", "short": "Triglycerides", "unit": "mg/dL", "pattern": r"Triglycerides[^\d]*(\d+(?:\.\d+)?)", "ref": "< 150 mg/dL", "limit": 150.0, "warn_hi": 200.0},
+        {"name": "Serum Creatinine", "short": "Creatinine", "unit": "mg/dL", "pattern": r"Creatinine[^\d]*(\d+(?:\.\d+)?)", "ref": "0.7 - 1.3 mg/dL", "limit": 1.3, "warn_hi": 1.4},
+        {"name": "eGFR Filtration", "short": "eGFR", "unit": "mL/min", "pattern": r"eGFR[^\d]*(\d+(?:\.\d+)?)", "ref": ">= 90 mL/min", "limit": 60.0, "warn_lo": 60.0},
+        {"name": "ALT (SGPT) Liver", "short": "ALT", "unit": "U/L", "pattern": r"(?:ALT|SGPT)[^\d]*(\d+(?:\.\d+)?)", "ref": "7 - 56 U/L", "limit": 56.0, "warn_hi": 56.0},
     ]
 
     detected = []
@@ -149,7 +189,16 @@ def parse_biomarkers(report_text: str) -> List[Dict[str, Any]]:
                 status = "High"
             elif "warn_lo" in b and val < b["warn_lo"]:
                 status = "Low"
-            detected.append({"parameter": b["name"], "value": f"{val} {b['unit']}", "ref_interval": b["ref"], "status": status})
+            detected.append({
+                "parameter": b["name"],
+                "short": b["short"],
+                "num_value": val,
+                "value": f"{val} {b['unit']}",
+                "unit": b["unit"],
+                "limit": b["limit"],
+                "ref_interval": b["ref"],
+                "status": status
+            })
     return detected
 
 
@@ -170,7 +219,6 @@ SINHALA_MEDICAL_LEXICON = {
     "පැනඩෝල්": "paracetamol painkillers",
     "ඉබියුප්‍රොෆෙන්": "ibuprofen nsaids",
     "තයිරොයිඩ්": "thyroid tsh",
-    # Singlish terms
     "seeni": "blood sugar glucose",
     "diyawadiyawa": "diabetes",
     "thele": "triglycerides cholesterol lipid",
@@ -199,7 +247,7 @@ def generate_sinhala_explanation(query: str, observation: Dict[str, Any], retrie
     """Synthesizes an accurate, plain-language Sinhala clinical explanation based on retrieved guideline evidence."""
     if observation["is_out_of_scope"]:
         return (
-            "⚠️ **ප්‍රමාණවත් මාර්ගෝපදේශ සාක්ෂි නොමැත (Out of Scope):**\n"
+            "⚠️ **ප්‍රමාණවත් මාර්ගෝපදේශ සාක්ෂි නොමැත (Out of Scope):**\n\n"
             "අප සතු සායනික මාර්ගෝපදේශ ආවරණය කරන්නේ දියවැඩියාව (Diabetes), කොලෙස්ටරෝල් (Lipid Profile) "
             "සහ වකුගඩු/අක්මා (Renal/Liver) වාර්තා පමණි. තයිරොයිඩ් (TSH / Free T4) හෝ Levothyroxine මාත්‍රා "
             "පිළිබඳ තොරතුරු මෙහි අඩංගු නොවන බැවින් කරුණාකර වහාම සුදුසුකම්ලත් වෛද්‍යවරයෙකුගෙන් උපදෙස් ලබාගන්න."
@@ -253,7 +301,7 @@ def generate_sinhala_explanation(query: str, observation: Dict[str, Any], retrie
 
 
 # -----------------------------------------------------------------------------
-# Sidebar: Patient Report Ingestion & Guideline Repositories
+# Sidebar: Ingestion, Sample Report Loader & Clear Button
 # -----------------------------------------------------------------------------
 with st.sidebar:
     st.image("https://img.icons8.com/fluency/96/caduceus.png", width=64)
@@ -264,24 +312,36 @@ with st.sidebar:
 
     col_btn1, col_btn2 = st.columns(2)
     with col_btn1:
-        load_sample = st.button("Load Sample Report", use_container_width=True)
+        if st.button("Load Sample", use_container_width=True, type="secondary"):
+            sample_pdf_path = "data/sample_reports/Sample_Patient_Blood_Report.pdf"
+            if os.path.exists(sample_pdf_path):
+                st.session_state.report_content = extract_text_from_pdf(sample_pdf_path)
+                st.session_state.report_filename = "Sample_Patient_Blood_Report.pdf (Mr. K. Perera)"
+                st.session_state.parsed_biomarkers = parse_biomarkers(st.session_state.report_content)
+                st.rerun()
 
-    report_content = ""
-    report_filename = "No Report Selected"
-
-    sample_pdf_path = "data/sample_reports/Sample_Patient_Blood_Report.pdf"
+    with col_btn2:
+        if st.button("Clear Report", use_container_width=True):
+            st.session_state.report_content = ""
+            st.session_state.report_filename = "No Report Selected"
+            st.session_state.parsed_biomarkers = []
+            st.session_state.last_result = None
+            st.rerun()
 
     if uploaded_file is not None:
-        report_content = extract_text_from_pdf(uploaded_file)
-        report_filename = uploaded_file.name
-        st.success(f"Loaded: {report_filename}")
-    elif load_sample and os.path.exists(sample_pdf_path):
-        report_content = extract_text_from_pdf(sample_pdf_path)
-        report_filename = "Sample_Patient_Blood_Report.pdf (Mr. K. Perera)"
-        st.info("Loaded Default Benchmark Patient: Mr. K. Perera (48yo Male)")
+        extracted = extract_text_from_pdf(uploaded_file)
+        if extracted != st.session_state.report_content:
+            st.session_state.report_content = extracted
+            st.session_state.report_filename = uploaded_file.name
+            st.session_state.parsed_biomarkers = parse_biomarkers(extracted)
+
+    if st.session_state.report_content:
+        st.success(f"📄 Active: {st.session_state.report_filename}")
+    else:
+        st.info("ℹ️ No report currently active.")
 
     st.markdown("---")
-    st.markdown("### 📚 Reference Guidelines")
+    st.markdown("### 📚 Reference Clinical Guidelines")
     st.markdown(
         """
         - **WHO Diabetes Guideline (2023)** *(HbA1c, FBS, PPBS)*
@@ -290,11 +350,11 @@ with st.sidebar:
         """
     )
     st.markdown("---")
-    st.caption("MediExplain AI | DS205.3 Data Science with Python | NSBM")
+    st.caption("MediExplain AI | DS205.3 Data Science with Python | NSBM Green University")
 
 
 # -----------------------------------------------------------------------------
-# Main Application Header
+# Main Header & Prominent Clinical Safety Notice
 # -----------------------------------------------------------------------------
 st.markdown('<div class="main-title">🩺 MediExplain AI</div>', unsafe_allow_html=True)
 st.markdown(
@@ -303,40 +363,96 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Language Selector Toggle
+# Prominent Ethical / Safety Notice
+st.markdown(
+    """
+    <div class="disclaimer-banner">
+        <strong>⚠️ CLINICAL AI SAFETY NOTICE & ETHICAL DISCLAIMER:</strong><br/>
+        This system is an explainable clinical decision-support and patient education prototype grounded strictly in official WHO, KDIGO, and NCEP guidelines.
+        It does <strong>NOT</strong> provide direct medical diagnosis or replace consultation with a licensed medical professional.
+        If your report indicates critical values or you experience acute distress, please contact your nearest medical emergency facility immediately.
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
+# Response Language Selection
 lang_choice = st.radio(
     "🌐 **පිළිතුරු භාෂාව තෝරන්න / Response Language:**",
     options=["English", "සිංහල (Sinhala)"],
     horizontal=True,
 )
 
-# If report is loaded, show Biomarker Extraction Panel
-if report_content:
-    with st.expander("📋 Extracted Patient Biomarker Panel", expanded=True):
-        biomarkers = parse_biomarkers(report_content)
-        if biomarkers:
-            cols = st.columns(min(4, len(biomarkers)))
-            for idx, b in enumerate(biomarkers):
-                col = cols[idx % 4]
-                badge_class = "badge-normal" if b["status"] == "Normal" else ("badge-high" if b["status"] == "High" else "badge-low")
-                with col:
-                    st.markdown(
-                        f"""
-                        <div class="metric-card">
-                            <div class="metric-lbl">{b['parameter']}</div>
-                            <div class="metric-val">{b['value']}</div>
-                            <div><span class="{badge_class}">{b['status']}</span></div>
-                            <div style="font-size:0.75rem; color:#94A3B8; margin-top:4px;">Ref: {b['ref_interval']}</div>
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-        else:
-            st.info("No standard structured blood markers automatically matched, but raw text is active for semantic retrieval.")
+
+# -----------------------------------------------------------------------------
+# Biomarker Dashboard & Plotly Visual Analytics
+# -----------------------------------------------------------------------------
+if st.session_state.report_content and st.session_state.parsed_biomarkers:
+    with st.expander("📋 Extracted Patient Biomarker Analytics & Risk Profiling", expanded=True):
+        biomarkers = st.session_state.parsed_biomarkers
+
+        # 1. Metric Cards
+        cols = st.columns(min(4, len(biomarkers)))
+        for idx, b in enumerate(biomarkers):
+            col = cols[idx % 4]
+            badge_class = "badge-normal" if b["status"] == "Normal" else ("badge-high" if b["status"] == "High" else "badge-low")
+            with col:
+                st.markdown(
+                    f"""
+                    <div class="metric-card">
+                        <div class="metric-lbl">{b['parameter']}</div>
+                        <div class="metric-val">{b['value']}</div>
+                        <div><span class="{badge_class}">{b['status']}</span></div>
+                        <div style="font-size:0.75rem; color:#94A3B8; margin-top:4px;">Ref: {b['ref_interval']}</div>
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
+        st.markdown("<br/>", unsafe_allow_html=True)
+
+        # 2. Interactive Plotly Bar Chart: Patient Values vs Clinical Limits
+        chart_biomarkers = [b for b in biomarkers if b.get("num_value") is not None]
+        if chart_biomarkers:
+            names = [b["short"] for b in chart_biomarkers]
+            values = [b["num_value"] for b in chart_biomarkers]
+            limits = [b["limit"] for b in chart_biomarkers]
+            colors = ["#EF4444" if b["status"] == "High" else ("#F59E0B" if b["status"] == "Low" else "#10B981") for b in chart_biomarkers]
+
+            fig = go.Figure()
+            fig.add_trace(go.Bar(
+                name="Patient Measured Value",
+                x=names,
+                y=values,
+                marker_color=colors,
+                text=[f"{v} {b['unit']}" for v, b in zip(values, chart_biomarkers)],
+                textposition="auto"
+            ))
+            fig.add_trace(go.Scatter(
+                name="Standard Reference Threshold",
+                x=names,
+                y=limits,
+                mode="lines+markers",
+                marker=dict(symbol="diamond", size=10, color="#1E3A8A"),
+                line=dict(color="#1E3A8A", width=2, dash="dash")
+            ))
+
+            fig.update_layout(
+                title="📊 Clinical Biomarker Comparison vs. Standard Guideline Limits",
+                xaxis_title="Biomarker",
+                yaxis_title="Measured Concentration / Rate",
+                barmode="group",
+                height=340,
+                margin=dict(l=40, r=40, t=50, b=40),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+            )
+            st.plotly_chart(fig, use_container_width=True)
+else:
+    st.info("💡 **No blood report currently loaded.** Use the sidebar to upload a patient PDF or click **'Load Sample'** to activate real-time biomarker analytics and guideline matching.")
 
 
 # -----------------------------------------------------------------------------
-# Quick Query Selector & Interactive Query Box (Bilingual Templates)
+# Clinical Query Consultation (Bilingual Templates + Clear Option)
 # -----------------------------------------------------------------------------
 st.markdown("### 💬 Clinical Query & Reasoning Consultation")
 
@@ -355,26 +471,34 @@ else:
         "My TSH is 9.4 mIU/L and Free T4 is 0.5 ng/dL. What dosage of Levothyroxine should I take?",
     ]
 
-selected_suggestion = st.selectbox("Quick Query Templates:", ["-- Select a Query Template --"] + query_suggestions)
+selected_suggestion = st.selectbox(
+    "Quick Query Templates:",
+    ["-- Select a Query Template --"] + query_suggestions,
+    key="template_select"
+)
 
 default_query = selected_suggestion if selected_suggestion != "-- Select a Query Template --" else ""
 user_query = st.text_input(
     "Enter your clinical query (English, සිංහල, or Singlish):",
     value=default_query,
     placeholder="e.g., මගේ සීනි 162 mg/dL සහ HbA1c 8.2% යි / What does an LDL of 174 mg/dL indicate?",
+    key="user_query_input"
 )
 
-col_run, col_clear = st.columns([1, 6])
+col_run, col_clear, col_space = st.columns([1.5, 1.2, 5])
 with col_run:
     execute_search = st.button("🚀 Analyze Query", type="primary", use_container_width=True)
+with col_clear:
+    if st.button("🔄 Reset Query", use_container_width=True):
+        st.session_state.last_result = None
+        st.rerun()
 
 
 # -----------------------------------------------------------------------------
-# Agent Execution & Live Explainability Rendering
+# Agentic Execution & State Caching
 # -----------------------------------------------------------------------------
 if execute_search and user_query:
     with st.spinner("Executing Explainable Agentic Loop (Observe -> Reason -> Act -> Persist)..."):
-        # Map Sinhala/Singlish medical terms to underlying clinical concepts
         normalized_query = normalize_bilingual_query(user_query)
 
         agent_result = pipeline.run(normalized_query)
@@ -392,51 +516,140 @@ if execute_search and user_query:
             expected_answer=english_final_answer,
         )
 
-    # 1. Final Answer Card (Render in selected language)
-    st.markdown("#### 💡 Clinical Guideline Interpretation")
-    if lang_choice == "සිංහල (Sinhala)":
         parsed_obs = pipeline.observe(normalized_query)
-        sinhala_answer = generate_sinhala_explanation(user_query, parsed_obs, retrieved_chunks)
-        st.markdown(f'<div class="sinhala-box">{sinhala_answer}</div>', unsafe_allow_html=True)
-    else:
-        st.success(english_final_answer)
+        sinhala_final_answer = generate_sinhala_explanation(user_query, parsed_obs, retrieved_chunks)
 
-    # 2. Live RAG Triad Metrics Gauges
-    st.markdown("#### 📊 Live RAG Triad Evaluation Metrics (Coursework Section IV)")
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        # Cache in session state
+        st.session_state.last_result = {
+            "query": user_query,
+            "normalized_query": normalized_query,
+            "observation": observation,
+            "reasoning_steps": reasoning_steps,
+            "retrieved_chunks": retrieved_chunks,
+            "english_final_answer": english_final_answer,
+            "sinhala_final_answer": sinhala_final_answer,
+            "metrics": metrics,
+        }
 
-    with col_m1:
-        st.metric("Context Relevance", f"{metrics['context_relevance'] * 100:.1f}%", help="Degree to which retrieved guideline chunks match the query clinical parameters.")
-    with col_m2:
-        st.metric("Groundedness (Faithfulness)", f"{metrics['groundedness'] * 100:.1f}%", help="Absence of hallucinations; every claim is grounded in retrieved guidelines.")
-    with col_m3:
-        st.metric("Answer Relevance", f"{metrics['answer_relevance'] * 100:.1f}%", help="How directly the synthesis answers the user's specific clinical query.")
-    with col_m4:
-        st.metric("Composite Triad Score", f"{metrics['composite_score'] * 100:.1f}%", help="Overall weighted RAG score (High Distinction band > 85%).")
 
-    # 3. Agentic Loop Trace (Perception-Action Cycle)
-    with st.expander("🧠 Agentic Loop Execution Trace (Observation -> Reasoning -> Action)", expanded=True):
-        st.markdown(f"**Step 1: Observation**\n- `{observation}`")
-        st.markdown("**Step 2: Multi-Step Reasoning & Sub-Query Decomposition**")
-        for step in reasoning_steps:
-            st.markdown(f"- {step}")
-        st.markdown(f"**Step 3: Action**\n- Retrieved `{len(retrieved_chunks)}` targeted guideline chunks via Hybrid Vector Matching.")
+# -----------------------------------------------------------------------------
+# Structured Tab-Based Presentation of Results
+# -----------------------------------------------------------------------------
+if st.session_state.last_result is not None:
+    res = st.session_state.last_result
 
-    # 4. Foundational Vector Mathematics Explainability Inspector
-    with st.expander("📐 Mathematical Explainability Inspector (Dot Products & Cosine Similarities)"):
-        st.markdown(
-            "This table exposes the foundational vector space calculations required by **DS205.3 Coursework Section II**: "
-            r"$\text{Cosine Sim} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}$"
+    st.markdown("---")
+    tab_advice, tab_rag, tab_agent, tab_math, tab_passages = st.tabs([
+        "💡 Clinical Interpretation",
+        "📊 Live RAG Triad Metrics",
+        "🧠 Agent Reasoning Trace",
+        "📐 Vector Math Inspector",
+        "📖 Retrieved Evidence Passages"
+    ])
+
+    # -------------------------------------------------------------------------
+    # TAB 1: Clinical Guideline Interpretation & Download
+    # -------------------------------------------------------------------------
+    with tab_advice:
+        st.markdown("#### Clinical Practice Guideline Interpretation")
+        if lang_choice == "සිංහල (Sinhala)":
+            st.markdown(f'<div class="sinhala-box">{res["sinhala_final_answer"]}</div>', unsafe_allow_html=True)
+            download_text = f"MediExplain AI - Clinical Report Summary\n\nQuery: {res['query']}\n\nInterpretation (Sinhala):\n{res['sinhala_final_answer']}"
+        else:
+            st.markdown(f'<div class="english-box">{res["english_final_answer"]}</div>', unsafe_allow_html=True)
+            download_text = f"MediExplain AI - Clinical Report Summary\n\nQuery: {res['query']}\n\nInterpretation (English):\n{res['english_final_answer']}"
+
+        st.markdown("<br/>", unsafe_allow_html=True)
+        st.download_button(
+            label="📥 Download Clinical Summary (.txt)",
+            data=download_text,
+            file_name="MediExplain_Clinical_Interpretation.txt",
+            mime="text/plain",
+            help="Download a printable summary of this clinical interpretation for your medical records."
         )
-        if retrieved_chunks:
+
+    # -------------------------------------------------------------------------
+    # TAB 2: Live RAG Triad Metrics & Interactive Radar Chart
+    # -------------------------------------------------------------------------
+    with tab_rag:
+        st.markdown("#### Real-Time Empirical RAG Triad Evaluation (DS205.3 Coursework Section IV)")
+        m = res["metrics"]
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+
+        with col_m1:
+            st.metric("Context Relevance", f"{m['context_relevance'] * 100:.1f}%", help="Guideline chunks matching query clinical parameters.")
+        with col_m2:
+            st.metric("Groundedness (Faithfulness)", f"{m['groundedness'] * 100:.1f}%", help="Absence of hallucinations; strictly anchored to WHO/KDIGO text.")
+        with col_m3:
+            st.metric("Answer Relevance", f"{m['answer_relevance'] * 100:.1f}%", help="Direct alignment with user's specific clinical query.")
+        with col_m4:
+            st.metric("Composite Triad Score", f"{m['composite_score'] * 100:.1f}%", help="Overall weighted performance (Target: > 85.0%).")
+
+        # Interactive Radar Plot of RAG Triad
+        categories = ["Context Relevance", "Groundedness", "Answer Relevance", "Composite Score"]
+        scores = [m["context_relevance"] * 100, m["groundedness"] * 100, m["answer_relevance"] * 100, m["composite_score"] * 100]
+
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=scores + [scores[0]],
+            theta=categories + [categories[0]],
+            fill="toself",
+            name="Current Query",
+            line_color="#2563EB",
+            fillcolor="rgba(37, 99, 235, 0.2)"
+        ))
+        fig_radar.add_trace(go.Scatterpolar(
+            r=[85, 85, 85, 85, 85],
+            theta=categories + [categories[0]],
+            mode="lines",
+            name="High-Distinction Band (85%)",
+            line=dict(color="#10B981", dash="dash")
+        ))
+        fig_radar.update_layout(
+            polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+            showlegend=True,
+            height=320,
+            margin=dict(l=60, r=60, t=30, b=30)
+        )
+        st.plotly_chart(fig_radar, use_container_width=True)
+
+    # -------------------------------------------------------------------------
+    # TAB 3: Agentic Loop Execution Trace
+    # -------------------------------------------------------------------------
+    with tab_agent:
+        st.markdown("#### 4-Step Perception-Action Loop (Observation -> Reasoning -> Action -> Persistence)")
+        st.markdown(f"**Step 1: Clinical Observation (Perception)**")
+        st.info(f"Detected: {res['observation']}")
+
+        st.markdown("**Step 2: Multi-Step Clinical Reasoning (Chain-of-Thought)**")
+        for step in res["reasoning_steps"]:
+            st.markdown(f"- {step}")
+
+        st.markdown("**Step 3: Action Execution**")
+        st.success(f"Retrieved {len(res['retrieved_chunks'])} targeted guideline passages via Convex Hybrid Matching.")
+
+        st.markdown("**Step 4: Persistence**")
+        st.caption("AgentState serialized and verified against BaseAgent contract.")
+
+    # -------------------------------------------------------------------------
+    # TAB 4: Foundational Vector Math Inspector
+    # -------------------------------------------------------------------------
+    with tab_math:
+        st.markdown("#### Foundational Vector Mathematics Explainability Inspector (Coursework Section II)")
+        st.markdown(
+            r"Vector similarity is rigorously calculated via: "
+            r"$\text{Cosine Sim} = \frac{\mathbf{A} \cdot \mathbf{B}}{\|\mathbf{A}\| \|\mathbf{B}\|}, \quad "
+            r"\text{Score}_{\text{hybrid}} = \alpha S_{\text{dense}} + (1 - \alpha) S_{\text{sparse}}$"
+        )
+        if res["retrieved_chunks"]:
             table_data = []
-            for c in retrieved_chunks:
+            for c in res["retrieved_chunks"]:
                 table_data.append(
                     {
                         "Chunk ID": c["chunk_id"],
                         "Source Guideline": c["source"],
                         "Page": c["page"],
-                        "Dot Product (A . B)": c.get("dot_product", 0.0),
+                        "Dot Product (A · B)": c.get("dot_product", 0.0),
                         "Query Mag (||A||)": c.get("query_magnitude", 0.0),
                         "Doc Mag (||B||)": c.get("doc_magnitude", 0.0),
                         "Cosine Similarity": c.get("cosine_similarity", 0.0),
@@ -445,9 +658,12 @@ if execute_search and user_query:
                 )
             st.dataframe(table_data, use_container_width=True)
 
-    # 5. Retrieved Clinical Passages & Sources
-    with st.expander("📖 Retrieved Clinical Guideline Passages"):
-        for c in retrieved_chunks:
+    # -------------------------------------------------------------------------
+    # TAB 5: Retrieved Evidence Passages
+    # -------------------------------------------------------------------------
+    with tab_passages:
+        st.markdown("#### Grounded Guideline Evidence Passages")
+        for c in res["retrieved_chunks"]:
             st.markdown(f"**[{c['chunk_id']}] {c['source']} (Page {c['page']})**")
             st.info(c["text"])
 
