@@ -1,7 +1,9 @@
 # 🩺 MediExplain AI: Explainable Agentic Medical Lab Report & Guideline Interpreter
 
 **Module:** DS205.3 – Data Science with Python (NSBM Green University)  
-**Assessment:** Coursework (40% Weighting)
+**Assessment:** Coursework (40% Weighting)  
+**Live Demo:** [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://mediexplain-agentic-rag.streamlit.app/)  
+🌐 **Public Cloud URL:** [https://mediexplain-agentic-rag.streamlit.app/](https://mediexplain-agentic-rag.streamlit.app/)
 
 ---
 
